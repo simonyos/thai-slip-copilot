@@ -65,18 +65,21 @@ def main() -> None:
     print(f"[predict] device={device}  n_images={len(paths)}  weights={args.weights}")
 
     model = YOLO(args.weights)
-    # stream=True: per-image generator, avoids loading all results into memory.
-    # batch=1 keeps peak VRAM small — on a 3060 Ti shared with a desktop
-    # compositor, a larger batch of 1083x1320 inputs can OOM.
-    results = model.predict(
-        source=[str(p) for p in paths],
-        conf=args.conf,
-        imgsz=args.imgsz,
-        device=device,
-        stream=True,
-        batch=1,
-        verbose=False,
-    )
+    # Iterate one image at a time: passing a list of paths makes
+    # ultralytics materialise all image tensors up front which OOMs on
+    # a 3060 Ti shared with a desktop. stream=True inside predict()
+    # still pre-loads the source when source is a list; iterating
+    # externally gives us the per-image pacing we want.
+    def _results_stream():
+        for p in paths:
+            yield p, next(iter(model.predict(
+                source=str(p),
+                conf=args.conf,
+                imgsz=args.imgsz,
+                device=device,
+                stream=True,
+                verbose=False,
+            )))
 
     class_counts: Counter[str] = Counter()
     per_image_class_presence: Counter[str] = Counter()
@@ -84,7 +87,7 @@ def main() -> None:
     missing_qr: list[str] = []
     n_imgs = 0
 
-    for src_path, r in zip(paths, results, strict=False):
+    for src_path, r in _results_stream():
         n_imgs += 1
         stem = src_path.stem
         h, w = r.orig_shape  # (height, width)
