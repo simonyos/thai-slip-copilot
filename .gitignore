@@ -21,13 +21,15 @@ Thumbs.db
 
 # Data — real slips are PII, never commit raw images
 data/real/
+data/real_v*/
 data/synth_v*/
 data/eval/images/
-data/*/*.jpg
-data/*/*.jpeg
-data/*/*.png
-# Allow label JSONLs to commit for auditing
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+# Allow label JSONLs, dataset yamls, and schema files to commit for auditing
 !data/**/*.jsonl
+!data/**/*.yaml
 !data/**/schema.json
 
 # Real slip images from scrape — PII, never commit. Provenance/labels do commit.
