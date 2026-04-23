@@ -1,4 +1,4 @@
-.PHONY: setup synth sample finetune eval demo serve clean
+.PHONY: setup synth sample train-detector finetune eval demo serve clean
 
 setup:
 	uv venv
@@ -9,6 +9,9 @@ sample:
 
 synth:
 	uv run python -m thai_slip_copilot.render --out data/synth_v1 --count 5000
+
+train-detector:
+	uv run python -m thai_slip_copilot.detect_train --name detector_v1
 
 finetune:
 	uv run python -m thai_slip_copilot.finetune \
