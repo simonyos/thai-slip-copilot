@@ -22,6 +22,7 @@ Thumbs.db
 # Data — real slips are PII, never commit raw images
 data/real/
 data/real_v*/
+data/real_phone_v*/
 data/synth_v*/
 data/eval/images/
 data/**/*.jpg
@@ -61,3 +62,5 @@ hf_cache/
 # Generated reports
 experiments/runs/
 experiments/figures/samples/
+# Label-preview renderings on real data — contain PII slips
+experiments/figures/real_phone_v*_preview/
