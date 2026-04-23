@@ -65,13 +65,16 @@ def main() -> None:
     print(f"[predict] device={device}  n_images={len(paths)}  weights={args.weights}")
 
     model = YOLO(args.weights)
-    # stream=True: per-image generator, avoids loading all results into memory
+    # stream=True: per-image generator, avoids loading all results into memory.
+    # batch=1 keeps peak VRAM small — on a 3060 Ti shared with a desktop
+    # compositor, a larger batch of 1083x1320 inputs can OOM.
     results = model.predict(
         source=[str(p) for p in paths],
         conf=args.conf,
         imgsz=args.imgsz,
         device=device,
         stream=True,
+        batch=1,
         verbose=False,
     )
 
