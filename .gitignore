@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.eggs/
+build/
+dist/
+
+# uv
+.uv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Data — real slips are PII, never commit raw images
+data/real/
+data/synth_v*/
+data/eval/images/
+data/*/*.jpg
+data/*/*.jpeg
+data/*/*.png
+# Allow label JSONLs to commit for auditing
+!data/**/*.jsonl
+!data/**/schema.json
+
+# Streamlit cache
+.streamlit/
+
+# Model weights — regenerable from training
+runs/
+artifacts/
+outputs/
+*.safetensors
+*.bin
+*.gguf
+checkpoints/
+mlruns/
+wandb/
+
+# HF model cache redirects
+.cache/
+hf_cache/
+
+# Generated reports
+experiments/runs/
+experiments/figures/samples/

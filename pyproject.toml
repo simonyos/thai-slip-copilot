@@ -1,0 +1,58 @@
+[project]
+name = "thai-slip-copilot"
+version = "0.1.0"
+description = "Thai bank transfer slip parser — OCR + small-LLM structured extraction, mobile-deployable"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Simon Yosboon", email = "simon.yosboon@hotmail.com" }]
+dependencies = [
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.2",
+    "transformers>=4.45",
+    "datasets>=2.20",
+    "peft>=0.12",
+    "accelerate>=0.32",
+    "bitsandbytes>=0.43 ; sys_platform == 'linux'",
+]
+ocr = [
+    "ultralytics>=8.2",
+    "pytesseract>=0.3",
+]
+serve = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "python-multipart>=0.0.9",
+]
+demo = [
+    "streamlit>=1.33",
+]
+dev = [
+    "ruff>=0.5",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+slip-copilot = "thai_slip_copilot.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
