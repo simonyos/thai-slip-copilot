@@ -30,6 +30,14 @@ data/*/*.png
 !data/**/*.jsonl
 !data/**/schema.json
 
+# Real slip images from scrape — PII, never commit. Provenance/labels do commit.
+data/real_scrape/**/images/
+data/real_scrape/**/*.jpg
+data/real_scrape/**/*.jpeg
+data/real_scrape/**/*.png
+# Roboflow SDK download cache
+.rf_cache/
+
 # Streamlit cache
 .streamlit/
 
