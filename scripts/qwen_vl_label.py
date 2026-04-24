@@ -63,6 +63,10 @@ def load_model_and_processor(model_id: str, quant: str):
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_quant_type="nf4",
         )
+    elif quant == "awq":
+        # AWQ models are pre-quantized; the weights on disk ARE int4.
+        # We only need compute dtype + device.
+        kwargs["torch_dtype"] = torch.float16
     else:
         kwargs["torch_dtype"] = torch.float16
 
@@ -144,8 +148,8 @@ def main() -> None:
     ap.add_argument("--images", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--model", default="Qwen/Qwen2.5-VL-3B-Instruct")
-    ap.add_argument("--quant", default="fp16", choices=("fp16", "4bit"),
-                    help="fp16 (needs more VRAM) or 4bit (bitsandbytes)")
+    ap.add_argument("--quant", default="fp16", choices=("fp16", "4bit", "awq"),
+                    help="fp16, 4bit (bitsandbytes), or awq (pre-quantized checkpoint)")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
