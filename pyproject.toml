@@ -25,7 +25,7 @@ train = [
 ]
 ocr = [
     "ultralytics>=8.2",
-    "pytesseract>=0.3",
+    "easyocr>=1.7",
 ]
 serve = [
     "fastapi>=0.110",
