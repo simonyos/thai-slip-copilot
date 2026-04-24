@@ -44,7 +44,7 @@ from thai_slip_copilot.fields import CLASS_TO_ID, UNIFIED_CLASSES
 
 # --- Template: normalized (x_center, y_center, w, h) for K+ fixed slots ---
 # Calibrated by eye from IMG_5249, 5400, 5493, 5793, 5459, 6194 then
-# corrected after viewing 6 template-labeled previews.
+# corrected after viewing template-labeled previews.
 # "sender_accnum" = the "xxx-x-x7829-x" line under the sender's bank name.
 KPLUS_TEMPLATE: dict[str, tuple[float, float, float, float]] = {
     # date + time line in the header, e.g. "4 ส.ค. 68  11:55 น."
@@ -66,6 +66,15 @@ KPLUS_TEMPLATE: dict[str, tuple[float, float, float, float]] = {
 REFERENCE_OFFSET_FROM_AMOUNT_Y: float = -0.093  # normalized
 REFERENCE_WH: tuple[float, float] = (0.34, 0.034)
 REFERENCE_X_CENTER: float = 0.235
+
+# Fallback amount box — applied only when the v1 detector missed amount
+# on this slip (~1-8% of phone images). Amount always lives at a fixed
+# position in the lower half of the slip. Taller box absorbs variance
+# across slip-type variants (transfer/topup/merchant-pay vs bill-pay).
+# Measured empirically from 247 detector_v1 amount detections across
+# the 377-slip phone set: y_center mean=0.816, stdev=0.003 — so a
+# fixed box at the mean is essentially as good as the detector here.
+AMOUNT_FALLBACK_XYWH: tuple[float, float, float, float] = (0.500, 0.816, 0.30, 0.045)
 
 
 def _write_yolo_label(path: Path, boxes: list[tuple[int, float, float, float, float]]) -> None:
@@ -153,14 +162,19 @@ def main() -> None:
             cls_name = "accnum" if name == "accnum_sender" else name
             tpl_boxes.append((CLASS_TO_ID[cls_name], xc, yc, w, h))
 
-        # 3. reference box anchored to detected amount y. If the detector
-        # didn't find an amount on this slip (~1% of cases), skip the
-        # reference label rather than planting it at a guessed position.
-        if amount_yc is not None:
-            ref_yc = amount_yc + REFERENCE_OFFSET_FROM_AMOUNT_Y
-            tpl_boxes.append(
-                (CLASS_TO_ID["reference"], REFERENCE_X_CENTER, ref_yc, *REFERENCE_WH)
-            )
+        # 3. amount fallback + reference: if the detector missed amount
+        # on this slip, plant a template amount box so we don't teach
+        # v2+ that amount can be absent. Reference anchors to whichever
+        # amount source we have.
+        if amount_yc is None:
+            axc, ayc, aw, ah = AMOUNT_FALLBACK_XYWH
+            tpl_boxes.append((CLASS_TO_ID["amount"], axc, ayc, aw, ah))
+            amount_yc = ayc
+
+        ref_yc = amount_yc + REFERENCE_OFFSET_FROM_AMOUNT_Y
+        tpl_boxes.append(
+            (CLASS_TO_ID["reference"], REFERENCE_X_CENTER, ref_yc, *REFERENCE_WH)
+        )
 
         boxes = det_boxes + tpl_boxes
         split = "val" if p in val_set else "train"
