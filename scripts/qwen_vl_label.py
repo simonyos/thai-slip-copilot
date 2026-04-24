@@ -78,16 +78,21 @@ def load_model_and_processor(model_id: str, quant: str):
     return model, processor
 
 
-def extract_fields(model, processor, image_path: Path) -> dict:
+def extract_fields(model, processor, image_path: Path, max_pixels: int | None) -> dict:
     from qwen_vl_utils import process_vision_info
+
+    image_entry: dict = {"type": "image", "image": str(image_path)}
+    if max_pixels:
+        # Qwen-VL accepts a per-image max_pixels which caps the vision
+        # token count. 768×1024 ≈ 786k pixels; that keeps the 3B model
+        # entirely on an 8 GB card at fp16 while preserving Thai text
+        # fidelity much better than bnb-4bit quantisation.
+        image_entry["max_pixels"] = max_pixels
 
     messages = [
         {
             "role": "user",
-            "content": [
-                {"type": "image", "image": str(image_path)},
-                {"type": "text", "text": PROMPT},
-            ],
+            "content": [image_entry, {"type": "text", "text": PROMPT}],
         }
     ]
     text = processor.apply_chat_template(
@@ -150,6 +155,9 @@ def main() -> None:
     ap.add_argument("--model", default="Qwen/Qwen2.5-VL-3B-Instruct")
     ap.add_argument("--quant", default="fp16", choices=("fp16", "4bit", "awq"),
                     help="fp16, 4bit (bitsandbytes), or awq (pre-quantized checkpoint)")
+    ap.add_argument("--max-pixels", type=int, default=786432,
+                    help="Cap vision-encoder input resolution (pixels). "
+                         "768×1024 ≈ 786432. 0 disables.")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -170,7 +178,10 @@ def main() -> None:
     with out_path.open("w") as f:
         for i, p in enumerate(paths, 1):
             t0 = time.time()
-            result = extract_fields(model, processor, p)
+            result = extract_fields(
+                model, processor, p,
+                max_pixels=args.max_pixels or None,
+            )
             dt = time.time() - t0
             rec = {
                 "image": p.name,
