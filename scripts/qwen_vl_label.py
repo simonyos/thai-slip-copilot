@@ -50,17 +50,25 @@ Respond with ONLY the JSON object, no prose, no markdown fences.
 """
 
 
-def load_model_and_processor(model_id: str):
+def load_model_and_processor(model_id: str, quant: str):
     import torch
     from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
-    print(f"[qwen] loading {model_id}…")
+    kwargs: dict = {"device_map": {"": 0}}  # force everything onto GPU 0
+    if quant == "4bit":
+        from transformers import BitsAndBytesConfig
+
+        kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_quant_type="nf4",
+        )
+    else:
+        kwargs["torch_dtype"] = torch.float16
+
+    print(f"[qwen] loading {model_id}  quant={quant}…")
     t0 = time.time()
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        model_id,
-        torch_dtype=torch.float16,
-        device_map="auto",
-    )
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_id, **kwargs)
     processor = AutoProcessor.from_pretrained(model_id)
     print(f"[qwen] loaded in {time.time() - t0:.1f}s")
     return model, processor
@@ -136,6 +144,8 @@ def main() -> None:
     ap.add_argument("--images", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--model", default="Qwen/Qwen2.5-VL-3B-Instruct")
+    ap.add_argument("--quant", default="fp16", choices=("fp16", "4bit"),
+                    help="fp16 (needs more VRAM) or 4bit (bitsandbytes)")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -151,7 +161,7 @@ def main() -> None:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    model, processor = load_model_and_processor(args.model)
+    model, processor = load_model_and_processor(args.model, args.quant)
 
     with out_path.open("w") as f:
         for i, p in enumerate(paths, 1):
