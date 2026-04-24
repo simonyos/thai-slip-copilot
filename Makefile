@@ -1,4 +1,4 @@
-.PHONY: setup synth sample train-detector finetune eval demo serve clean
+.PHONY: setup synth sample train-detector gold verify finetune eval demo serve clean
 
 setup:
 	uv venv
@@ -12,6 +12,15 @@ synth:
 
 train-detector:
 	uv run python -m thai_slip_copilot.detect_train --name detector_v1
+
+gold:
+	uv run python scripts/build_gold_set.py \
+		--weights experiments/runs/detector_v2_1/weights/best.pt \
+		--images /Volumes/SM-EXT/Documents/Slip-orc-sample \
+		--out data/eval/gold_phone_v1.jsonl --n 50
+
+verify:
+	uv run streamlit run app/verify_slip_labels.py
 
 finetune:
 	uv run python -m thai_slip_copilot.finetune \
