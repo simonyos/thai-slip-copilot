@@ -121,9 +121,11 @@ def parse_reference(raw: str) -> str | None:
 # --- accnum / promptpay --------------------------------------------
 
 # accnum format K+ bank account: "xxx-x-xNNNN-x" (fully masked except
-# 4 digits). Case-insensitive x.
+# 4 digits). Case-insensitive x. The trailing -x is optional because
+# EasyOCR sometimes crops the final character (especially on slightly-
+# right-truncated crops).
 _ACCNUM_RE = re.compile(
-    r"[xX]{3}\s*-\s*[xX]\s*-\s*[xX](?P<last4>\d{4})\s*-\s*[xX]"
+    r"[xX]{3}\s*-\s*[xX]\s*-\s*[xX](?P<last4>\d{4})(?:\s*-\s*[xX])?"
 )
 
 # promptpay phone variant: "xxx-xxx-NNNN"

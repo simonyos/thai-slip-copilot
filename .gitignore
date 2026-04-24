@@ -32,6 +32,9 @@ data/**/*.png
 !data/**/*.jsonl
 !data/**/*.yaml
 !data/**/schema.json
+# …but gold-transcription JSONLs contain real reference IDs, names,
+# account numbers — PII, re-exclude them.
+data/eval/gold_*.jsonl
 
 # Real slip images from scrape — PII, never commit. Provenance/labels do commit.
 data/real_scrape/**/images/

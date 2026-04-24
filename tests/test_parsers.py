@@ -92,6 +92,11 @@ class TestParseAccnum:
     def test_no_match(self):
         assert parse_accnum("not an account") is None
 
+    def test_truncated_trailing_x(self):
+        # EasyOCR sometimes drops the trailing "-x" on right-truncated crops
+        assert parse_accnum("XXX-X-X7829-") == "xxx-x-x7829-x"
+        assert parse_accnum("0.7161713 Byd XXX-X-X7829-") == "xxx-x-x7829-x"
+
 
 class TestParsePromptpay:
     def test_phone(self):

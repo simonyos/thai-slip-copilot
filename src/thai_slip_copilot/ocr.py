@@ -65,7 +65,7 @@ def get_reader(langs: tuple[str, ...] = ("th", "en")) -> "easyocr.Reader":
 # Thai chars on Latin alphanumeric strings.
 _PAD_POLICY: dict[str, tuple[float, float, float, float]] = {
     # class           L     R     T     B
-    "date":          (0.05, 0.15, 0.15, 0.15),
+    "date":          (0.20, 0.15, 0.20, 0.20),
     "name":          (0.05, 0.15, 0.15, 0.20),
     "amount":        (0.05, 0.30, 0.25, 0.25),
     "accnum":        (0.05, 0.65, 0.30, 0.30),  # box captures left ~60% of text
