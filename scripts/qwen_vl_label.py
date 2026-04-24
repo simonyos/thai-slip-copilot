@@ -78,15 +78,23 @@ def load_model_and_processor(model_id: str, quant: str):
     return model, processor
 
 
-def extract_fields(model, processor, image_path: Path, max_pixels: int | None) -> dict:
+def extract_fields(
+    model, processor, image_path: Path,
+    max_pixels: int | None, grayscale: bool,
+) -> dict:
+    from PIL import Image, ImageOps
     from qwen_vl_utils import process_vision_info
 
-    image_entry: dict = {"type": "image", "image": str(image_path)}
+    # Preprocess in-Python so we control exactly what Qwen sees.
+    img = Image.open(image_path).convert("RGB")
+    if grayscale:
+        # Collapse to luminance then re-expand to 3 channels. This
+        # strips the teal K+ background tint that seems to cost the
+        # vision encoder some Thai-character fidelity.
+        img = ImageOps.grayscale(img).convert("RGB")
+
+    image_entry: dict = {"type": "image", "image": img}
     if max_pixels:
-        # Qwen-VL accepts a per-image max_pixels which caps the vision
-        # token count. 768×1024 ≈ 786k pixels; that keeps the 3B model
-        # entirely on an 8 GB card at fp16 while preserving Thai text
-        # fidelity much better than bnb-4bit quantisation.
         image_entry["max_pixels"] = max_pixels
 
     messages = [
@@ -158,6 +166,10 @@ def main() -> None:
     ap.add_argument("--max-pixels", type=int, default=786432,
                     help="Cap vision-encoder input resolution (pixels). "
                          "768×1024 ≈ 786432. 0 disables.")
+    ap.add_argument("--grayscale", action="store_true",
+                    help="Collapse the input image to grayscale before "
+                         "feeding to the vision encoder. Strips the K+ "
+                         "teal tint; helps with fine Thai text fidelity.")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -181,6 +193,7 @@ def main() -> None:
             result = extract_fields(
                 model, processor, p,
                 max_pixels=args.max_pixels or None,
+                grayscale=args.grayscale,
             )
             dt = time.time() - t0
             rec = {
