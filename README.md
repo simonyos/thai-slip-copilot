@@ -48,9 +48,9 @@ fine-tuned model weights ship with the app; no server round-trip.
 | Weekend | Deliverable |
 |---|---|
 | 1 | Synthetic slip renderer — 5+ bank templates, per-field bboxes, structured ground truth JSON |
-| 2 | OCR stage — Thai text detection + recognition on slip crops (likely Tesseract Thai + templated ROI regex baseline, upgrade path to a dedicated YOLO text-line detector if needed) |
-| 3 | Fine-tune Gemma 3 270M on synth `OCR text → Slip JSON` pairs; eval exact-field accuracy on synth val |
-| 4 | Collect + hand-verify ~50 real slips (own phone, anonymised); measure synth→real gap |
+| 2 | Field detector — scrape real Thai slips from Roboflow, merge into 8-class schema, train YOLOv8n, eval on own K+ phone slips, iterate |
+| 3 | OCR stage — Thai text recognition on the detected field crops (Tesseract Thai / EasyOCR baseline, text → typed field value) |
+| 4 | Fine-tune Gemma 3 270M on synth `OCR text → Slip JSON` pairs; eval exact-field accuracy on real-slip gold set |
 | 5 | Ablation: Gemma 3 270M vs Qwen 2.5-1.5B vs regex-template baseline; category classifier head |
 | 6 | Streamlit demo + FastAPI endpoint + HF Space deploy; GGUF export for mobile |
 | 7 | Mobile demo — React Native app with `llama.rn`, on-device inference; record the demo |
@@ -103,7 +103,13 @@ make demo
 ## Project status
 
 - ✅ Scaffold — schema, repo structure, README, mobile-deployment plan
-- 🚧 Weekend 1 — synth slip renderer
+- ✅ Weekend 1 — synth slip renderer
+- ✅ Weekend 2 — field detector
+  - Roboflow scrape (pipat + colamarc) merged into unified 8-class YOLO schema (674 train / 74 val)
+  - YOLOv8n trained to 0.995 val mAP50 (detector v1) — but collapsed on real K+ phone slips for 4 of 8 classes due to label incompleteness across the merged sources
+  - Self-labeled 377 own K+ phone slips via a fixed template + amount-anchored reference; retrained (detector v2.1) on the merged 1,014-image set
+  - 7 of 8 classes at 91.5–100% coverage on real phone slips at 0.85+ confidence; `promptpay` deferred to a variant-aware labeling pass once OCR is wired up
+- 🚧 Weekend 3 — OCR on the detected crops
 
 ## License
 
