@@ -52,7 +52,7 @@ Respond with ONLY the JSON object, no prose, no markdown fences.
 
 def load_model_and_processor(model_id: str, quant: str):
     import torch
-    from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+    from transformers import AutoModelForImageTextToText, AutoProcessor
 
     kwargs: dict = {"device_map": {"": 0}}  # force everything onto GPU 0
     if quant == "4bit":
@@ -65,16 +65,17 @@ def load_model_and_processor(model_id: str, quant: str):
         )
     elif quant == "awq":
         # AWQ models are pre-quantized; the weights on disk ARE int4.
-        # We only need compute dtype + device.
         kwargs["torch_dtype"] = torch.float16
     else:
         kwargs["torch_dtype"] = torch.float16
 
-    print(f"[qwen] loading {model_id}  quant={quant}…")
+    print(f"[vlm] loading {model_id}  quant={quant}…")
     t0 = time.time()
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_id, **kwargs)
+    # AutoModelForImageTextToText dispatches to the right class
+    # (Qwen2_5_VL / Gemma4 / etc) based on the config.architectures entry.
+    model = AutoModelForImageTextToText.from_pretrained(model_id, **kwargs)
     processor = AutoProcessor.from_pretrained(model_id)
-    print(f"[qwen] loaded in {time.time() - t0:.1f}s")
+    print(f"[vlm] loaded in {time.time() - t0:.1f}s")
     return model, processor
 
 
@@ -83,36 +84,37 @@ def extract_fields(
     max_pixels: int | None, grayscale: bool,
 ) -> dict:
     from PIL import Image, ImageOps
-    from qwen_vl_utils import process_vision_info
 
-    # Preprocess in-Python so we control exactly what Qwen sees.
     img = Image.open(image_path).convert("RGB")
     if grayscale:
-        # Collapse to luminance then re-expand to 3 channels. This
-        # strips the teal K+ background tint that seems to cost the
-        # vision encoder some Thai-character fidelity.
+        # Strip colour — sometimes helps (sometimes hurts) OCR fidelity
+        # on slips with heavy background tinting. See smoke comparisons.
         img = ImageOps.grayscale(img).convert("RGB")
-
-    image_entry: dict = {"type": "image", "image": img}
     if max_pixels:
-        image_entry["max_pixels"] = max_pixels
+        w, h = img.size
+        if w * h > max_pixels:
+            scale = (max_pixels / (w * h)) ** 0.5
+            img = img.resize(
+                (int(w * scale), int(h * scale)), Image.LANCZOS
+            )
 
     messages = [
         {
             "role": "user",
-            "content": [image_entry, {"type": "text", "text": PROMPT}],
+            "content": [
+                {"type": "image", "image": img},
+                {"type": "text", "text": PROMPT},
+            ],
         }
     ]
-    text = processor.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
-    image_inputs, video_inputs = process_vision_info(messages)
-    inputs = processor(
-        text=[text],
-        images=image_inputs,
-        videos=video_inputs,
-        padding=True,
+    # Standard HF flow works for both Qwen 2.5-VL and Gemma 4 — the
+    # chat template + processor handles image tokenisation internally.
+    inputs = processor.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
         return_tensors="pt",
+        return_dict=True,
     ).to(model.device)
 
     generated = model.generate(
